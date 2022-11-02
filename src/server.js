@@ -147,7 +147,7 @@ function start(opts) {
     );
   }
 
-  const addStyle = (id, item, allowMoreData, reportFonts) => {
+  let addStyle = (id, item, allowMoreData, reportFonts) => {
     let success = true;
     if (item.serve_data !== false) {
       success = serve_style.add(options, serving.styles, item, id, opts.publicUrl,
@@ -203,6 +203,11 @@ function start(opts) {
       }
     }
   };
+  const addData = (id, item) => {
+    startupPromises.push(
+      serve_data.add(options, serving.data, item, id, opts.publicUrl)
+    );
+  };
 
   for (const id of Object.keys(config.styles || {})) {
     const item = config.styles[id];
@@ -230,6 +235,43 @@ function start(opts) {
     startupPromises.push(
         serve_data.add(options, serving.data, item, id, opts.publicUrl)
     );
+  }
+  if (options.serveAllData) {
+    fs.readdir(options.paths.mbtiles, {withFileTypes: true}, (err, files) => {
+      if (err) {
+        return;
+      }
+      for (const file of files) {
+        if (file.isFile() &&
+            path.extname(file.name).toLowerCase() == '.mbtiles') {
+          let id = path.basename(file.name, '.mbtiles');
+          let item = {
+            mbtiles: file.name
+          };
+          addData(id, item, false, false);
+        }
+      }
+    });
+
+    const watcher = chokidar.watch(path.join(options.paths.styles, '*.mbtiles'),
+      {
+      });
+    watcher.on('all',
+      (eventType, filename) => {
+        if (filename) {
+          let id = path.basename(filename, '.mbtiles');
+          console.log(`Data "${id}" changed, updating...`);
+
+          serve_data.remove(serving.data, id);
+
+          if (eventType == "add" || eventType == "change") {
+            let item = {
+              mbtiles: filename
+            };
+            addData(id, item);
+          }
+        }
+      });
   }
 
   if (options.serveAllStyles) {

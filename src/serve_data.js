@@ -117,6 +117,9 @@ export const serve_data = {
 
     return app;
   },
+  remove: (repo, id) => {
+    delete repo[id];
+  },
   add: (options, repo, params, id, publicUrl) => {
     const mbtilesFile = path.resolve(options.paths.mbtiles, params.mbtiles);
     let tileJSON = {
